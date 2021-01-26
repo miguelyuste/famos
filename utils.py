@@ -6,6 +6,7 @@ import numpy as np
 import PIL
 import torch.nn as nn
 from config import opt
+import cv2
 
 
 class TextureDataset(Dataset):
@@ -26,13 +27,15 @@ class TextureDataset(Dataset):
             for n in names:
                 name =self.img_path + n
                 try:
-                    img = Image.open(name)
-                    try:
-                        img = img.convert('RGB')##fixes truncation???
-                    except:
-                        pass
+                    img = torch.from_numpy(np.load(name).transpose(2,0,1))
+                    #img = Image.open(name)
+                    #try:
+                    #    img = img.convert('RGBA')##fixes truncation???
+                    #except:
+                    #    pass
                     if scale!=1:
-                        img=img.resize((int(img.size[0]*scale),int(img.size[1]*scale)),PIL.Image.LANCZOS)
+                        img=cv2.resize(img,(int(img.size[0]*scale),int(img.size[1]*scale)))
+                        #img=img.resize((int(img.size[0]*scale),int(img.size[1]*scale)),PIL.Image.LANCZOS)
                 except Exception as e:
                     print (e,name)
                     continue
@@ -49,10 +52,12 @@ class TextureDataset(Dataset):
 
     def __getitem__(self, index):
         if False:
+            # It's OK this branch never runs, data is loaded on __init__
             name =self.img_path + self.X_train[index]
-            img = Image.open(name)
+            #img = Image.open(name)
+            img = np.load(name)
         else:
-            img= self.X_train[index]#np.random.randint(len(self.X_train))   
+            img= self.X_train[index]#np.random.randint(len(self.X_train))
         if self.transform is not None:
             img2 = self.transform(img)        
         label =0
@@ -86,7 +91,8 @@ def GaussKernel(sigma,wid=None):
         a[i,i] = ker
     return a
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+################## changed device to use all
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 gsigma=1.##how much to blur - larger blurs more ##+"_sig"+str(gsigma)
 gwid=61
 kernel = torch.FloatTensor(GaussKernel(gsigma,wid=gwid)).to(device)##slow, pooling better
